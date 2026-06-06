@@ -36,7 +36,7 @@ export default function CalendarPage() {
       .select('*, subjects(name), profiles(full_name), grades(name)')
       .gte('date', startDate)
       .lte('date', endDate)
-      .order('date')
+      .order('starts_at')
 
     if (!error && data) setEvents(data)
     setLoading(false)
@@ -136,7 +136,9 @@ export default function CalendarPage() {
           {cells.map((day, i) => {
             if (!day) return <div key={`empty-${i}`} />
             const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
-            const dayEvs = events.filter(e => e.date === ds)
+            const dayEvs = events
+              .filter(e => e.date === ds)
+              .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))
             const isConflict = conflicts[ds]
             const isToday = ds === td
 
@@ -153,21 +155,25 @@ export default function CalendarPage() {
                   <span style={{ fontSize:11, fontWeight: isToday ? 600 : 400, color: isToday ? 'var(--blue)' : 'var(--text2)' }}>{day}</span>
                   {isConflict && <span style={styles.conflictBadge}>⚠ {conflicts[ds].length}</span>}
                 </div>
-                {dayEvs.slice(0,3).map(ev => (
-                  <div
-                    key={ev.id}
-                    title={`${ev.title} — ${ev.subjects?.name} (${ev.profiles?.full_name})`}
-                    onClick={() => isTeacher && ev.teacher_id === profile.id ? setModal(ev) : null}
-                    style={{
-                      ...styles.evChip,
-                      background: TYPE_BG[ev.type],
-                      color: TYPE_TEXT[ev.type],
-                      cursor: (isTeacher && ev.teacher_id === profile.id) ? 'pointer' : 'default',
-                    }}
-                  >
-                    {ev.title}
-                  </div>
-                ))}
+                {dayEvs.slice(0,3).map(ev => {
+                  const startLabel = new Date(ev.starts_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })
+                  const endLabel = new Date(ev.ends_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })
+                  return (
+                    <div
+                      key={ev.id}
+                      title={`${startLabel}–${endLabel} ${ev.title} — ${ev.subjects?.name} (${ev.profiles?.full_name})`}
+                      onClick={() => isTeacher && ev.teacher_id === profile.id ? setModal(ev) : null}
+                      style={{
+                        ...styles.evChip,
+                        background: TYPE_BG[ev.type],
+                        color: TYPE_TEXT[ev.type],
+                        cursor: (isTeacher && ev.teacher_id === profile.id) ? 'pointer' : 'default',
+                      }}
+                    >
+                      <strong style={{ marginRight: 4 }}>{startLabel}</strong>{ev.title}
+                    </div>
+                  )
+                })}
                 {dayEvs.length > 3 && <div style={{ fontSize:9, color:'var(--text3)', paddingLeft:2 }}>+{dayEvs.length-3} more</div>}
               </div>
             )
