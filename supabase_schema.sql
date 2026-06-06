@@ -38,16 +38,25 @@ create table public.teacher_subjects (
   unique (teacher_id, subject_id)
 );
 
+create extension if not exists btree_gist;
+
 create table public.events (
   id          bigint generated always as identity primary key,
   title       text        not null,
   type        text        not null check (type in ('Exam','Quiz','Test','Homework','Presentation')),
   date        date        not null,
+  starts_at   timestamptz not null,
+  ends_at     timestamptz not null,
   description text,
   subject_id  bigint      not null references public.subjects(id) on delete cascade,
   grade_id    bigint      not null references public.grades(id)   on delete cascade,
   teacher_id  uuid        not null references public.profiles(id) on delete cascade,
-  created_at  timestamptz default now()
+  created_at  timestamptz default now(),
+  constraint events_time_order check (ends_at > starts_at),
+  constraint events_no_overlap exclude using gist (
+    grade_id with =,
+    tstzrange(starts_at, ends_at, '[)') with &&
+  )
 );
 
 -- ──────────────────────────────────────────────────────────────
@@ -55,6 +64,7 @@ create table public.events (
 -- ──────────────────────────────────────────────────────────────
 
 create index on public.events (grade_id, date);
+create index on public.events (starts_at);
 create index on public.events (teacher_id);
 create index on public.teacher_subjects (teacher_id);
 

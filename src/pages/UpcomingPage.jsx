@@ -20,7 +20,7 @@ export default function UpcomingPage() {
         .from('events')
         .select('*, subjects(name), profiles(full_name), grades(name)')
         .gte('date', today)
-        .order('date')
+        .order('starts_at')
       if (!error && data) setEvents(data)
       setLoading(false)
     }
@@ -117,6 +117,8 @@ export default function UpcomingPage() {
                     <div style={styles.evTitle}>{ev.title}</div>
                     <div style={styles.evMeta}>
                       <span className={`badge badge-${ev.type?.toLowerCase()}`}>{ev.type}</span>
+                      <span style={{ color:'var(--text3)' }}>·</span>
+                      <span>{new Date(ev.starts_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}–{new Date(ev.ends_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}</span>
                       <span style={{ color:'var(--text3)' }}>·</span>
                       {ev.subjects?.name}
                       <span style={{ color:'var(--text3)' }}>·</span>
