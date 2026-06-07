@@ -13,6 +13,8 @@ export default function EventModal({ event, onClose, onSaved }) {
     title:      event?.title      || '',
     type:       event?.type       || 'Exam',
     date:       event?.date       || '',
+    start_time: event?.starts_at ? new Date(event.starts_at).toISOString().slice(11,16) : '09:00',
+    end_time:   event?.ends_at   ? new Date(event.ends_at).toISOString().slice(11,16) : '10:00',
     subject_id: event?.subject_id || '',
     description:event?.description|| '',
   })
@@ -44,11 +46,24 @@ export default function EventModal({ event, onClose, onSaved }) {
     const subject = mySubjects.find(s => s.id === parseInt(form.subject_id))
     if (!subject) { setError('Invalid subject.'); return }
 
+    const startsAt = new Date(`${form.date}T${form.start_time}`)
+    const endsAt = new Date(`${form.date}T${form.end_time}`)
+    if (isNaN(startsAt.getTime()) || isNaN(endsAt.getTime())) {
+      setError('Please provide a valid date and time range.');
+      return
+    }
+    if (endsAt <= startsAt) {
+      setError('End time must be later than the start time.');
+      return
+    }
+
     setLoading(true)
     const payload = {
       title:       form.title,
       type:        form.type,
       date:        form.date,
+      starts_at:   startsAt.toISOString(),
+      ends_at:     endsAt.toISOString(),
       subject_id:  parseInt(form.subject_id),
       grade_id:    subject.grade_id,
       teacher_id:  profile.id,
@@ -101,6 +116,16 @@ export default function EventModal({ event, onClose, onSaved }) {
             <div className="form-field">
               <label>Date</label>
               <input type="date" value={form.date} onChange={set('date')} required />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-field">
+              <label>Start time</label>
+              <input type="time" value={form.start_time} onChange={set('start_time')} required />
+            </div>
+            <div className="form-field">
+              <label>End time</label>
+              <input type="time" value={form.end_time} onChange={set('end_time')} required />
             </div>
           </div>
 
