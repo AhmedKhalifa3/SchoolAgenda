@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 
 export default function SignupPage() {
   const { signUp } = useAuth()
-  const navigate = useNavigate()
   const [grades, setGrades] = useState([])
   const [form, setForm] = useState({ fullName:'', email:'', password:'', role:'student', gradeId:'' })
   const [error, setError] = useState('')
