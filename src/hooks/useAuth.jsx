@@ -7,7 +7,7 @@ export function AuthProvider({ children }) {
   const [session, setSession]           = useState(undefined) // undefined = loading
   const [profile, setProfile]           = useState(null)
   const [profileError, setProfileError] = useState(null)
-  const [children: childrenList, setChildren] = useState([])
+  const [childrenList, setChildrenList] = useState([])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -19,7 +19,7 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       if (session) fetchProfile(session.user.id)
-      else { setProfile(null); setProfileError(null); setChildren([]) }
+      else { setProfile(null); setProfileError(null); setChildrenList([]) }
     })
 
     return () => subscription.unsubscribe()
@@ -57,7 +57,7 @@ export function AuthProvider({ children }) {
       .order('created_at')
 
     if (!error && data) {
-      setChildren(data.map(conn => conn.profiles))
+      setChildrenList(data.map(conn => conn.profiles))
     }
   }
 
