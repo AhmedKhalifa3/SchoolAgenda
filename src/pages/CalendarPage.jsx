@@ -126,8 +126,8 @@ export default function CalendarPage() {
           <div style={styles.titleRow}>
             <h2 style={styles.pageTitle}>{pageTitle}</h2>
             {isParent && children.length > 0 && (
-              <select 
-                value={selectedChildId || ''} 
+              <select
+                value={selectedChildId || ''}
                 onChange={e => setSelectedChildId(e.target.value)}
                 style={styles.childSelector}
               >
@@ -254,10 +254,8 @@ export default function CalendarPage() {
 const styles = {
   pageHeader: { display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:16, gap:16 },
   titleRow: { display:'flex', alignItems:'center', gap:12, marginBottom:6 },
-  pageTitle: { fontSize:18, fontWeight:500 },
-  childSelector: { padding:'6px 8px', borderRadius:6, border:'1px solid var(--border2)', background:'var(--bg)', color:'var(--text)', fontSize:13, cursor:'pointer' },
-  pageHeader: { display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:16, gap:16 },
   pageTitle: { fontSize:18, fontWeight:500, marginBottom:6 },
+  childSelector: { padding:'6px 8px', borderRadius:6, border:'1px solid var(--border2)', background:'var(--bg)', color:'var(--text)', fontSize:13, cursor:'pointer' },
   conflictBanner: {
     display:'flex', alignItems:'center', gap:8,
     background:'var(--amber-light)', color:'var(--amber-text)',

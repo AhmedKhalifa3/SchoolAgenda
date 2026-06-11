@@ -149,12 +149,3 @@ schoolagenda/
         ├── UpcomingPage.jsx     ← Chronological event list
         └── AdminPage.jsx        ← Grade / subject / assignment management
 ```
-
----
-
-## Next steps (when ready to go beyond PoC)
-
-- **Email notifications** — use Supabase Edge Functions + Resend (free tier) to email students when a new event is added
-- **Conflict resolution suggestions** — show teachers which days are free for their grade
-- **Mobile app** — the React app already works on mobile browsers; wrap with Capacitor for a native app
-- **Custom domain** — Vercel and Netlify both support custom domains on the free plan
