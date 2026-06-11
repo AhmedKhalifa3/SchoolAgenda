@@ -12,20 +12,20 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
-      if (session) fetchProfile(session.user.id)
+      if (session) fetchProfile(session.user.id, session.user)
       else setSession(null)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
-      if (session) fetchProfile(session.user.id)
+      if (session) fetchProfile(session.user.id, session.user)
       else { setProfile(null); setProfileError(null); setChildrenList([]) }
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
-  async function fetchProfile(userId) {
+  async function fetchProfile(userId, user) {
     setProfileError(null)
     const { data, error } = await supabase
       .from('profiles')
@@ -42,10 +42,41 @@ export function AuthProvider({ children }) {
       return
     }
     setProfile(data)
-    
-    // If parent, fetch children
+
+    // If parent, process any pending shared key from signup metadata
     if (data.role === 'parent') {
+      const pendingKey = user?.user_metadata?.shared_key
+      if (pendingKey) {
+        await processPendingSharedKey(userId, pendingKey)
+        // Clear the key from metadata so it's not processed again
+        await supabase.auth.updateUser({ data: { shared_key: null } })
+      }
       fetchChildren(userId)
+    }
+  }
+
+  async function processPendingSharedKey(parentId, key) {
+    const { data: keyData, error: keyError } = await supabase
+      .from('shared_keys')
+      .select('*')
+      .eq('key', key)
+      .gt('expires_at', new Date().toISOString())
+      .is('used_by', null)
+      .single()
+
+    if (keyError || !keyData) return // silently skip if expired/invalid
+
+    // Create the parent-student connection
+    const { error: connError } = await supabase
+      .from('parent_student_connections')
+      .insert({ parent_id: parentId, student_id: keyData.student_id })
+
+    if (!connError) {
+      // Mark the key as used
+      await supabase
+        .from('shared_keys')
+        .update({ used_by: parentId, used_at: new Date().toISOString() })
+        .eq('id', keyData.id)
     }
   }
 
@@ -62,7 +93,6 @@ export function AuthProvider({ children }) {
   }
 
   async function generateSharedKey(studentId, durationMinutes = 30) {
-    // Generate a random key (8 characters, alphanumeric)
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
     let key = ''
     for (let i = 0; i < 8; i++) {
@@ -73,11 +103,7 @@ export function AuthProvider({ children }) {
 
     const { data, error } = await supabase
       .from('shared_keys')
-      .insert({
-        student_id: studentId,
-        key: key,
-        expires_at: expiresAt
-      })
+      .insert({ student_id: studentId, key, expires_at: expiresAt })
       .select()
       .single()
 
@@ -121,7 +147,7 @@ export function AuthProvider({ children }) {
     createProfile,
     fetchChildren,
     generateSharedKey,
-    refreshProfile: () => session && fetchProfile(session.user.id),
+    refreshProfile: () => session && fetchProfile(session.user.id, session.user),
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

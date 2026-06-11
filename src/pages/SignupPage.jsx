@@ -29,42 +29,6 @@ export default function SignupPage() {
   const needsGrade = ['student'].includes(form.role)
   const isParent = form.role === 'parent'
 
-  async function validateAndUseSharedKey(parentId) {
-    const { data: keyData, error: keyError } = await supabase
-      .from('shared_keys')
-      .select('*, profiles(full_name, grade_id)')
-      .eq('key', form.sharedKey)
-      .gt('expires_at', new Date().toISOString())
-      .is('used_by', null)
-      .single()
-
-    if (keyError || !keyData) {
-      setError('Invalid or expired shared key.')
-      return false
-    }
-
-    // Create the parent-student connection
-    const { error: connError } = await supabase
-      .from('parent_student_connections')
-      .insert({
-        parent_id: parentId,
-        student_id: keyData.student_id
-      })
-
-    if (connError) {
-      setError('Failed to link parent to student: ' + connError.message)
-      return false
-    }
-
-    // Mark the key as used
-    await supabase
-      .from('shared_keys')
-      .update({ used_by: parentId, used_at: new Date().toISOString() })
-      .eq('id', keyData.id)
-
-    return true
-  }
-
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
@@ -81,15 +45,16 @@ export default function SignupPage() {
 
     setLoading(true)
 
-    // Sign up first
-    const { error: signupError, data: signupData } = await supabase.auth.signUp({
+    // Sign up — store shared key in metadata so we can process it after email confirmation
+    const { error: signupError } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: { 
         data: { 
           full_name: form.fullName, 
           role: form.role, 
-          grade_id: needsGrade ? parseInt(form.gradeId) : null 
+          grade_id: needsGrade ? parseInt(form.gradeId) : null,
+          shared_key: (isParent && form.useSharedKey) ? form.sharedKey.trim().toUpperCase() : null,
         } 
       },
     })
@@ -98,15 +63,6 @@ export default function SignupPage() {
       setError(signupError.message)
       setLoading(false)
       return
-    }
-
-    // If parent using shared key, validate and link
-    if (isParent && form.useSharedKey) {
-      const success = await validateAndUseSharedKey(signupData.user.id)
-      if (!success) {
-        setLoading(false)
-        return
-      }
     }
 
     setLoading(false)
@@ -180,10 +136,11 @@ export default function SignupPage() {
                   <label>Shared key (from your child's account)</label>
                   <input 
                     type="text" 
-                    placeholder="e.g., ABC123XYZ" 
+                    placeholder="e.g., ABC12345" 
                     value={form.sharedKey} 
                     onChange={set('sharedKey')}
                     required={form.useSharedKey}
+                    style={{ textTransform: 'uppercase', letterSpacing: 2 }}
                   />
                   <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>
                     ℹ️ Your child can generate this key in their account settings. It expires after 30 minutes.
