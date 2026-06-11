@@ -88,7 +88,7 @@ export function AuthProvider({ children }) {
       .order('created_at')
 
     if (!error && data) {
-      setChildrenList(data.map(conn => conn.profiles))
+      setChildrenList(data.map(conn => conn.profiles).filter(Boolean))
     }
   }
 
