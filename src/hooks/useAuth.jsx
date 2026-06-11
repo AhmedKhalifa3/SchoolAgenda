@@ -7,6 +7,7 @@ export function AuthProvider({ children }) {
   const [session, setSession]           = useState(undefined) // undefined = loading
   const [profile, setProfile]           = useState(null)
   const [profileError, setProfileError] = useState(null)
+  const [children: childrenList, setChildren] = useState([])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -18,7 +19,7 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       if (session) fetchProfile(session.user.id)
-      else { setProfile(null); setProfileError(null) }
+      else { setProfile(null); setProfileError(null); setChildren([]) }
     })
 
     return () => subscription.unsubscribe()
@@ -33,16 +34,54 @@ export function AuthProvider({ children }) {
       .single()
 
     if (error) {
-      // Profile row missing — happens if the trigger didn't fire or
-      // the schema wasn't run before the user signed up.
       setProfileError(
         error.code === 'PGRST116'
-          ? 'no_profile'   // row not found
+          ? 'no_profile'
           : error.message
       )
       return
     }
     setProfile(data)
+    
+    // If parent, fetch children
+    if (data.role === 'parent') {
+      fetchChildren(userId)
+    }
+  }
+
+  async function fetchChildren(parentId) {
+    const { data, error } = await supabase
+      .from('parent_student_connections')
+      .select('*, profiles:student_id(id, full_name, grade_id, grades(name))')
+      .eq('parent_id', parentId)
+      .order('created_at')
+
+    if (!error && data) {
+      setChildren(data.map(conn => conn.profiles))
+    }
+  }
+
+  async function generateSharedKey(studentId, durationMinutes = 30) {
+    // Generate a random key (8 characters, alphanumeric)
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    let key = ''
+    for (let i = 0; i < 8; i++) {
+      key += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+
+    const expiresAt = new Date(Date.now() + durationMinutes * 60000).toISOString()
+
+    const { data, error } = await supabase
+      .from('shared_keys')
+      .insert({
+        student_id: studentId,
+        key: key,
+        expires_at: expiresAt
+      })
+      .select()
+      .single()
+
+    return { key: data?.key || null, expiresAt: data?.expires_at || null, error }
   }
 
   async function createProfile(userId, fullName, role, gradeId) {
@@ -74,11 +113,14 @@ export function AuthProvider({ children }) {
     session,
     profile,
     profileError,
+    children: childrenList,
     loading: session === undefined,
     signIn,
     signUp,
     signOut,
     createProfile,
+    fetchChildren,
+    generateSharedKey,
     refreshProfile: () => session && fetchProfile(session.user.id),
   }
 
