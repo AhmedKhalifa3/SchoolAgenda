@@ -8,6 +8,7 @@ import DashboardLayout from './pages/DashboardLayout'
 import CalendarPage from './pages/CalendarPage'
 import UpcomingPage from './pages/UpcomingPage'
 import AdminPage from './pages/AdminPage'
+import SettingsPage from './pages/SettingsPage'
 import DiagnosticPage from './pages/DiagnosticPage'
 
 function RequireAuth({ children }) {
@@ -105,6 +106,7 @@ export default function App() {
           <Route path="/" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
             <Route index element={<CalendarPage />} />
             <Route path="upcoming" element={<UpcomingPage />} />
+            <Route path="settings" element={<SettingsPage />} />
             <Route path="admin" element={<RoleRoute roles={['admin']}><AdminPage /></RoleRoute>} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
