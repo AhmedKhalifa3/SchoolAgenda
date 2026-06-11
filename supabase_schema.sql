@@ -38,6 +38,26 @@ create table public.teacher_subjects (
   unique (teacher_id, subject_id)
 );
 
+-- Link parents to their children (students)
+create table public.parent_student_connections (
+  id         bigint generated always as identity primary key,
+  parent_id  uuid   not null references public.profiles(id) on delete cascade,
+  student_id uuid   not null references public.profiles(id) on delete cascade,
+  created_at timestamptz default now(),
+  unique (parent_id, student_id)
+);
+
+-- Temporary shared keys for parents to use during signup
+create table public.shared_keys (
+  id         bigint generated always as identity primary key,
+  student_id uuid   not null references public.profiles(id) on delete cascade,
+  key        text   not null unique,
+  expires_at timestamptz not null,
+  used_by    uuid references public.profiles(id) on delete set null,
+  used_at    timestamptz,
+  created_at timestamptz default now()
+);
+
 create extension if not exists btree_gist;
 
 create table public.events (
@@ -67,6 +87,11 @@ create index on public.events (grade_id, date);
 create index on public.events (starts_at);
 create index on public.events (teacher_id);
 create index on public.teacher_subjects (teacher_id);
+create index on public.parent_student_connections (parent_id);
+create index on public.parent_student_connections (student_id);
+create index on public.shared_keys (student_id);
+create index on public.shared_keys (key);
+create index on public.shared_keys (expires_at);
 
 -- ──────────────────────────────────────────────────────────────
 -- 3. ROW LEVEL SECURITY
@@ -76,6 +101,8 @@ alter table public.grades           enable row level security;
 alter table public.subjects         enable row level security;
 alter table public.profiles         enable row level security;
 alter table public.teacher_subjects enable row level security;
+alter table public.parent_student_connections enable row level security;
+alter table public.shared_keys      enable row level security;
 alter table public.events           enable row level security;
 
 -- Helper: get current user's role from profiles
@@ -141,12 +168,50 @@ create policy "ts_select" on public.teacher_subjects
 create policy "ts_write" on public.teacher_subjects
   for all using (public.my_role() = 'admin');
 
--- ── EVENTS ───────────────────────────────────────────────────
--- Students/parents: only see events for their own grade
-create policy "events_select_student_parent" on public.events
+-- ── PARENT_STUDENT_CONNECTIONS ───────────────────────────────
+create policy "psc_select_own" on public.parent_student_connections
   for select using (
-    public.my_role() in ('student','parent')
+    parent_id = auth.uid() or
+    student_id = auth.uid() or
+    public.my_role() = 'admin'
+  );
+
+create policy "psc_insert_admin" on public.parent_student_connections
+  for insert with check (public.my_role() = 'admin');
+
+create policy "psc_delete_admin" on public.parent_student_connections
+  for delete using (public.my_role() = 'admin');
+
+-- ── SHARED_KEYS ──────────────────────────────────────────────
+create policy "sk_select_student" on public.shared_keys
+  for select using (
+    student_id = auth.uid() or
+    public.my_role() = 'admin'
+  );
+
+create policy "sk_insert_student" on public.shared_keys
+  for insert with check (student_id = auth.uid());
+
+create policy "sk_update_on_use" on public.shared_keys
+  for update using (public.my_role() = 'admin' or student_id = auth.uid());
+
+-- ── EVENTS ───────────────────────────────────────────────────
+-- Students/parents: only see events for their own grade(s)
+create policy "events_select_student" on public.events
+  for select using (
+    public.my_role() = 'student'
     and grade_id = public.my_grade_id()
+  );
+
+-- Parents: see events for all their children's grades
+create policy "events_select_parent" on public.events
+  for select using (
+    public.my_role() = 'parent'
+    and grade_id in (
+      select distinct p.grade_id from public.profiles p
+      join public.parent_student_connections psc on psc.student_id = p.id
+      where psc.parent_id = auth.uid()
+    )
   );
 
 -- Teachers: see events for grades they teach
