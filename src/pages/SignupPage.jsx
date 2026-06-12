@@ -6,7 +6,15 @@ import { supabase } from '../lib/supabase'
 export default function SignupPage() {
   const { signUp } = useAuth()
   const [grades, setGrades] = useState([])
-  const [form, setForm] = useState({ fullName:'', email:'', password:'', role:'student', gradeId:'' })
+  const [form, setForm] = useState({ 
+    fullName: '', 
+    email: '', 
+    password: '', 
+    role: 'student', 
+    gradeId: '',
+    useSharedKey: false,
+    sharedKey: ''
+  })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
@@ -16,18 +24,49 @@ export default function SignupPage() {
   }, [])
 
   function set(field) { return e => setForm(f => ({ ...f, [field]: e.target.value })) }
+  function toggle(field) { return () => setForm(f => ({ ...f, [field]: !f[field] })) }
 
-  const needsGrade = ['student','parent'].includes(form.role)
+  const needsGrade = ['student'].includes(form.role)
+  const isParent = form.role === 'parent'
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
-    if (needsGrade && !form.gradeId) { setError('Please select a grade.'); return }
+
+    // Validation
+    if (needsGrade && !form.gradeId) { 
+      setError('Please select a grade.')
+      return 
+    }
+    if (isParent && form.useSharedKey && !form.sharedKey) {
+      setError('Please enter a shared key.')
+      return
+    }
+
     setLoading(true)
-    const { error } = await signUp(form.email, form.password, form.fullName, form.role, needsGrade ? parseInt(form.gradeId) : null)
+
+    // Sign up — store shared key in metadata so we can process it after email confirmation
+    const { error: signupError } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+      options: { 
+        data: { 
+          full_name: form.fullName, 
+          role: form.role, 
+          grade_id: needsGrade ? parseInt(form.gradeId) : null,
+          shared_key: (isParent && form.useSharedKey) ? form.sharedKey.trim().toUpperCase() : null,
+        } 
+      },
+    })
+
+    if (signupError) {
+      setError(signupError.message)
+      setLoading(false)
+      return
+    }
+
     setLoading(false)
-    if (error) setError(error.message)
-    else setDone(true)
+    setDone(true)
   }
 
   if (done) return (
@@ -77,11 +116,51 @@ export default function SignupPage() {
               </div>
             )}
           </div>
+
+          {isParent && (
+            <div style={styles.parentSection}>
+              <div style={styles.toggleRow}>
+                <input 
+                  type="checkbox" 
+                  id="useSharedKey" 
+                  checked={form.useSharedKey} 
+                  onChange={toggle('useSharedKey')}
+                  style={{ cursor: 'pointer' }}
+                />
+                <label htmlFor="useSharedKey" style={{ cursor: 'pointer', flex: 1 }}>
+                  I have a shared key from my child
+                </label>
+              </div>
+              {form.useSharedKey && (
+                <div className="form-field" style={{ marginTop: 10 }}>
+                  <label>Shared key (from your child's account)</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g., ABC12345" 
+                    value={form.sharedKey} 
+                    onChange={set('sharedKey')}
+                    required={form.useSharedKey}
+                    style={{ textTransform: 'uppercase', letterSpacing: 2 }}
+                  />
+                  <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>
+                    ℹ️ Your child can generate this key in their account settings. It expires after 30 minutes.
+                  </p>
+                </div>
+              )}
+              {!form.useSharedKey && (
+                <p style={{ fontSize:12, color:'var(--text2)', marginTop: 8 }}>
+                  ℹ️ You can add children later by entering their shared keys in your account settings.
+                </p>
+              )}
+            </div>
+          )}
+
           {form.role === 'teacher' && (
             <p style={{ fontSize:12, color:'var(--text2)', marginBottom:12 }}>
               ℹ️ After signing up, an admin will assign you to your subjects.
             </p>
           )}
+
           <button className="btn btn-primary" type="submit" disabled={loading} style={{ width:'100%', justifyContent:'center' }}>
             {loading ? <><span className="spinner" /> Creating account…</> : 'Create account'}
           </button>
@@ -98,4 +177,6 @@ const styles = {
   title: { fontSize:22, fontWeight:600, marginBottom:4 },
   sub: { color:'var(--text2)', fontSize:13, marginBottom:24 },
   footer: { marginTop:16, textAlign:'center', fontSize:13, color:'var(--text2)' },
+  parentSection: { background:'var(--bg)', borderRadius:8, padding:12, marginBottom:12, border:'1px solid var(--border)' },
+  toggleRow: { display:'flex', alignItems:'center', gap:8, fontSize:13 },
 }

@@ -14,16 +14,31 @@ function todayStr() {
 }
 
 export default function CalendarPage() {
-  const { profile } = useAuth()
+  const { profile, children } = useAuth()
   const today = new Date()
   const [year, setYear]     = useState(today.getFullYear())
   const [month, setMonth]   = useState(today.getMonth())
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
-  const [modal, setModal]   = useState(null) // null | 'add' | event object
+  const [modal, setModal]   = useState(null)
+  const [selectedChildId, setSelectedChildId] = useState(null)
 
   const isTeacher = profile?.role === 'teacher'
   const isAdmin   = profile?.role === 'admin'
+  const isParent  = profile?.role === 'parent'
+  const isStudent = profile?.role === 'student'
+
+  // Determine which grade to fetch events for
+  const gradeIdToUse = isParent && selectedChildId
+    ? children.find(c => c.id === selectedChildId)?.grade_id
+    : profile?.grade_id
+
+  // Set default selected child on first load
+  useEffect(() => {
+    if (isParent && children.length > 0 && !selectedChildId) {
+      setSelectedChildId(children[0].id)
+    }
+  }, [children, isParent, selectedChildId])
 
   const fetchEvents = useCallback(async () => {
     setLoading(true)
@@ -31,16 +46,22 @@ export default function CalendarPage() {
     const endDay    = new Date(year, month+1, 0).getDate()
     const endDate   = `${year}-${String(month+1).padStart(2,'0')}-${endDay}`
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('events')
       .select('*, subjects(name), profiles(full_name), grades(name)')
       .gte('date', startDate)
       .lte('date', endDate)
-      .order('starts_at')
+
+    // Filter by grade based on role
+    if (isStudent || (isParent && gradeIdToUse)) {
+      query = query.eq('grade_id', gradeIdToUse)
+    }
+
+    const { data, error } = await query.order('starts_at')
 
     if (!error && data) setEvents(data)
     setLoading(false)
-  }, [year, month])
+  }, [year, month, isStudent, isParent, gradeIdToUse])
 
   useEffect(() => { fetchEvents() }, [fetchEvents])
 
@@ -53,7 +74,6 @@ export default function CalendarPage() {
     })
   }
 
-  // Find days with 2+ high-stakes events (exams / quizzes / tests) for the same grade
   function getConflicts() {
     const highStakes = events.filter(e => ['Exam','Quiz','Test'].includes(e.type))
     const byDayGrade = {}
@@ -75,7 +95,7 @@ export default function CalendarPage() {
   const conflictDays = Object.keys(conflicts)
 
   function buildCalendar() {
-    const firstDow = (new Date(year, month, 1).getDay() + 6) % 7 // Mon=0
+    const firstDow = (new Date(year, month, 1).getDay() + 6) % 7
     const daysInMonth = new Date(year, month+1, 0).getDate()
     const cells = []
 
@@ -87,14 +107,38 @@ export default function CalendarPage() {
   const cells = buildCalendar()
   const td = todayStr()
 
+  // Determine page title
+  let pageTitle = 'Calendar'
+  if (isTeacher) pageTitle = 'My subjects calendar'
+  else if (isAdmin) pageTitle = 'All events'
+  else if (isParent && selectedChildId) {
+    const selectedChild = children.find(c => c.id === selectedChildId)
+    pageTitle = `Calendar — ${selectedChild?.grades?.name || ''}`
+  } else if (isStudent) {
+    pageTitle = `Calendar — ${profile?.grades?.name || ''}`
+  }
+
   return (
     <div>
       {/* Page header */}
       <div style={styles.pageHeader}>
-        <div>
-          <h2 style={styles.pageTitle}>
-            {isTeacher ? 'My subjects calendar' : isAdmin ? 'All events' : `Calendar — ${profile?.grades?.name || ''}`}
-          </h2>
+        <div style={{ flex: 1 }}>
+          <div style={styles.titleRow}>
+            <h2 style={styles.pageTitle}>{pageTitle}</h2>
+            {isParent && children.length > 0 && (
+              <select 
+                value={selectedChildId || ''} 
+                onChange={e => setSelectedChildId(e.target.value)}
+                style={styles.childSelector}
+              >
+                {children.map(child => (
+                  <option key={child.id} value={child.id}>
+                    {child.full_name} ({child.grades?.name})
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
           {conflictDays.length > 0 && (
             <div style={styles.conflictBanner}>
               <i className="ti ti-alert-triangle" aria-hidden="true" style={{ fontSize:15 }} />
@@ -208,6 +252,10 @@ export default function CalendarPage() {
 }
 
 const styles = {
+  pageHeader: { display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:16, gap:16 },
+  titleRow: { display:'flex', alignItems:'center', gap:12, marginBottom:6 },
+  pageTitle: { fontSize:18, fontWeight:500 },
+  childSelector: { padding:'6px 8px', borderRadius:6, border:'1px solid var(--border2)', background:'var(--bg)', color:'var(--text)', fontSize:13, cursor:'pointer' },
   pageHeader: { display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:16, gap:16 },
   pageTitle: { fontSize:18, fontWeight:500, marginBottom:6 },
   conflictBanner: {

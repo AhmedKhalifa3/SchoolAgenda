@@ -50,6 +50,13 @@ export default function DashboardLayout() {
               School setup
             </NavLink>
           )}
+
+          {isViewer && (
+            <NavLink to="/settings" style={navStyle} className="nav-link">
+              <i className="ti ti-key" aria-hidden="true" />
+              Settings
+            </NavLink>
+          )}
         </nav>
 
         <div style={styles.userSection}>
