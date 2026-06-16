@@ -35,7 +35,7 @@ export default function SharedKeysPanel() {
   async function handleGenerateKey() {
     setError('')
     setGeneratingKey(true)
-    const { key, expiresAt, error: err } = await generateSharedKey(profile.id, 30)
+    const { key, error: err } = await generateSharedKey(profile.id, 30)
     
     if (err || !key) {
       setError(err?.message || 'Failed to generate key')

@@ -4,10 +4,9 @@ import { useAuth } from '../hooks/useAuth'
 import SharedKeysPanel from '../components/SharedKeysPanel'
 
 export default function SettingsPage() {
-  const { profile, children, generateSharedKey, fetchChildren } = useAuth()
+  const { profile, fetchChildren } = useAuth()
   const [activeTab, setActiveTab] = useState('account')
   const [parentChildren, setParentChildren] = useState([])
-  const [sharedKeys, setSharedKeys] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -110,13 +109,15 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 18, fontWeight: 500, marginBottom: 4 }}>Settings</h2>
-      <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>
-        Manage your account settings and preferences.
-      </p>
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 4 }}>Settings</h1>
+        <p style={{ fontSize: 13, color: 'var(--text3)' }}>
+          Manage your account and preferences.
+        </p>
+      </div>
 
       {error && <div className="error-msg" style={{ marginBottom: 16 }}>{error}</div>}
-      {success && <div style={{ background: 'var(--green-light)', color: 'var(--green-text)', borderRadius: 8, padding: '8px 14px', fontSize: 13, marginBottom: 16 }}>{success}</div>}
+      {success && <div style={{ background: 'var(--green-light)', color: 'var(--green-text)', borderRadius: 10, padding: '10px 14px', fontSize: 13, marginBottom: 16, fontWeight: 500, border: '1px solid var(--green)' }}>{success}</div>}
 
       {/* Tabs */}
       <div style={styles.tabBar}>
@@ -277,24 +278,24 @@ const styles = {
   tabBar: {
     display: 'flex',
     gap: 0,
-    borderBottom: '1px solid var(--border)',
-    marginBottom: 16,
+    borderBottom: '2px solid var(--border)',
   },
   tab: {
-    padding: '12px 16px',
+    padding: '12px 18px',
     border: 'none',
     background: 'transparent',
     cursor: 'pointer',
     fontSize: 13,
     fontWeight: 500,
     borderBottom: '2px solid transparent',
-    transition: 'all 0.2s',
+    marginBottom: -2,
+    transition: 'all 0.15s',
   },
   infoRow: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '12px 0',
+    padding: '14px 0',
     borderBottom: '1px solid var(--border)',
     fontSize: 13,
   },
@@ -304,13 +305,13 @@ const styles = {
   },
   value: {
     color: 'var(--text)',
-    fontWeight: 500,
+    fontWeight: 600,
   },
   childCard: {
     background: 'var(--bg)',
     border: '1px solid var(--border)',
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 10,
+    padding: 14,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',

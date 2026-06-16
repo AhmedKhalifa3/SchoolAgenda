@@ -144,11 +144,13 @@ export default function AdminPage() {
 
   return (
     <div>
-      <h2 style={{ fontSize:18, fontWeight:500, marginBottom:4 }}>School setup</h2>
-      <p style={{ fontSize:13, color:'var(--text2)', marginBottom:20 }}>Manage grades, subjects, teacher assignments, and parent-child relationships.</p>
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 4 }}>School Setup</h1>
+        <p style={{ fontSize: 13, color:'var(--text3)' }}>Manage grades, subjects, teacher assignments, and parent-child relationships.</p>
+      </div>
 
       {error   && <div className="error-msg">{error}</div>}
-      {success && <div style={{ background:'var(--green-light)', color:'var(--green-text)', borderRadius:8, padding:'8px 14px', fontSize:13, marginBottom:12 }}>{success}</div>}
+      {success && <div style={{ background:'var(--green-light)', color:'var(--green-text)', borderRadius: 10, padding:'10px 14px', fontSize:13, marginBottom:14, fontWeight: 500, border: '1px solid var(--green)' }}>{success}</div>}
 
       <div style={styles.grid}>
         {/* Grades */}
@@ -333,12 +335,12 @@ export default function AdminPage() {
 }
 
 const styles = {
-  grid: { display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 },
-  inlineForm: { display:'flex', gap:6, marginBottom:10, flexWrap:'wrap' },
-  inlineInput: { flex:1, minWidth:100, padding:'6px 8px', borderRadius:6, border:'1px solid var(--border2)', background:'var(--bg)', color:'var(--text)', fontSize:12 },
-  listRow: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 0', borderBottom:'1px solid var(--border)', gap:8 },
-  assignChip: { display:'flex', alignItems:'center', gap:6, background:'var(--bg3)', borderRadius:8, padding:'5px 10px', fontSize:12 },
+  grid: { display:'grid', gridTemplateColumns:'1fr 1fr', gap: 16 },
+  inlineForm: { display:'flex', gap: 8, marginBottom: 12, flexWrap:'wrap' },
+  inlineInput: { flex:1, minWidth:100, padding:'8px 10px', borderRadius: 8, border:'1px solid var(--border2)', background:'var(--bg)', color:'var(--text)', fontSize: 13 },
+  listRow: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid var(--border)', gap: 8 },
+  assignChip: { display:'flex', alignItems:'center', gap: 6, background:'var(--bg3)', borderRadius: 8, padding:'6px 12px', fontSize: 12 },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: 12 },
-  th: { textAlign: 'left', padding: '8px', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: 11, color: 'var(--text2)' },
-  td: { padding: '8px', borderBottom: '1px solid var(--border)', color: 'var(--text)' },
+  th: { textAlign: 'left', padding: '10px 8px', borderBottom: '2px solid var(--border)', fontWeight: 600, fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.05em' },
+  td: { padding: '10px 8px', borderBottom: '1px solid var(--border)', color: 'var(--text)' },
 }

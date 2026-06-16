@@ -2,9 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
-const TYPE_BG   = { Exam:'var(--red-light)', Quiz:'var(--coral-light)', Test:'var(--purple-light)', Homework:'var(--green-light)', Presentation:'var(--teal-light)' }
-const TYPE_TEXT = { Exam:'var(--red-text)', Quiz:'var(--coral-text)', Test:'var(--purple-text)', Homework:'var(--green-text)', Presentation:'var(--teal-text)' }
-const TYPE_DOT  = { Exam:'#E24B4A', Quiz:'#D85A30', Test:'#7F77DD', Homework:'#639922', Presentation:'#1D9E75' }
+const TYPE_DOT  = { Exam:'#dc2626', Quiz:'#ea580c', Test:'#7c3aed', Homework:'#16a34a', Presentation:'#0d9488' }
 
 export default function UpcomingPage() {
   const { profile } = useAuth()
@@ -27,7 +25,6 @@ export default function UpcomingPage() {
     load()
   }, [])
 
-  // Detect conflict days (2+ high-stakes same grade same day)
   function getConflictDays() {
     const highStakes = events.filter(e => ['Exam','Quiz','Test'].includes(e.type))
     const byDayGrade = {}
@@ -48,22 +45,24 @@ export default function UpcomingPage() {
 
   function formatDate(ds) {
     const d = new Date(ds + 'T12:00:00')
-    const opts = { weekday:'short', day:'numeric', month:'short' }
-    return d.toLocaleDateString('en-GB', opts)
+    return d.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' })
   }
 
   function daysUntil(ds) {
     const diff = Math.round((new Date(ds+'T12:00:00') - new Date()) / 86400000)
     if (diff === 0) return 'Today'
     if (diff === 1) return 'Tomorrow'
-    return `In ${diff} days`
+    return `${diff} days`
   }
 
   return (
     <div>
-      <h2 style={{ fontSize:18, fontWeight:500, marginBottom:16 }}>
-        Upcoming — {profile?.grades?.name || 'All grades'}
-      </h2>
+      <div style={styles.header}>
+        <div>
+          <h1 style={styles.pageTitle}>Upcoming</h1>
+          <p style={styles.subtitle}>{profile?.grades?.name || 'All grades'} — next assessments</p>
+        </div>
+      </div>
 
       {/* Filter pills */}
       <div style={styles.pills}>
@@ -73,63 +72,57 @@ export default function UpcomingPage() {
             onClick={() => setFilter(f)}
             style={{
               ...styles.pill,
-              background: filter===f ? (f==='all'?'var(--blue)':TYPE_BG[f]) : 'var(--bg2)',
-              color:       filter===f ? (f==='all'?'#fff':TYPE_TEXT[f]) : 'var(--text2)',
-              borderColor: filter===f ? 'transparent' : 'var(--border)',
+              ...(filter === f ? styles.pillActive : {}),
+              ...(filter === f && f !== 'all' ? { borderColor: TYPE_DOT[f], color: TYPE_DOT[f] } : {}),
             }}
           >
-            {f === 'all' ? 'All types' : f}
+            {f !== 'all' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: TYPE_DOT[f] }} />}
+            {f === 'all' ? 'All' : f}
           </button>
         ))}
       </div>
 
       {loading ? (
-        <div style={{ textAlign:'center', padding:40 }}><div className="spinner" /></div>
+        <div style={{ textAlign:'center', padding: 60 }}><div className="spinner" /></div>
       ) : filtered.length === 0 ? (
-        <div className="empty-state">
-          <i className="ti ti-calendar-off" style={{ fontSize:32, display:'block', marginBottom:8 }} aria-hidden="true" />
-          No upcoming events.
+        <div className="card" style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <i className="ti ti-calendar-off" style={{ fontSize: 40, color: 'var(--text3)', display:'block', marginBottom: 12 }} />
+          <p style={{ color: 'var(--text2)', fontSize: 14 }}>No upcoming events</p>
         </div>
       ) : (
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {filtered.map((ev, i) => {
             const isConflict = conflictDays.has(ev.date)
-            const prevDate   = i > 0 ? filtered[i-1].date : null
-            const showDate   = ev.date !== prevDate
+            const prevDate = i > 0 ? filtered[i-1].date : null
+            const showDate = ev.date !== prevDate
 
             return (
               <div key={ev.id}>
                 {showDate && (
                   <div style={styles.dateLabel}>
-                    {formatDate(ev.date)}
-                    {isConflict && <span style={styles.conflictTag}>⚠ conflict day</span>}
+                    <span>{formatDate(ev.date)}</span>
+                    <span style={styles.daysLabel}>{daysUntil(ev.date)}</span>
+                    {isConflict && <span style={styles.conflictTag}><i className="ti ti-alert-triangle" style={{ fontSize: 11 }} /> Conflict</span>}
                   </div>
                 )}
-                <div
-                  style={{
-                    ...styles.card,
-                    borderLeft: `3px solid ${TYPE_DOT[ev.type]}`,
-                    background: isConflict ? 'var(--amber-light)' : 'var(--bg2)',
-                  }}
-                >
-                  <div style={styles.dot} />
-                  <div style={{ flex:1 }}>
-                    <div style={styles.evTitle}>{ev.title}</div>
-                    <div style={styles.evMeta}>
+                <div className="card" style={{
+                  ...styles.eventCard,
+                  borderLeftColor: TYPE_DOT[ev.type],
+                  ...(isConflict ? { background: 'var(--amber-light)' } : {}),
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={styles.evHeader}>
+                      <span style={styles.evTitle}>{ev.title}</span>
                       <span className={`badge badge-${ev.type?.toLowerCase()}`}>{ev.type}</span>
-                      <span style={{ color:'var(--text3)' }}>·</span>
-                      <span>{new Date(ev.starts_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}–{new Date(ev.ends_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}</span>
-                      <span style={{ color:'var(--text3)' }}>·</span>
-                      {ev.subjects?.name}
-                      <span style={{ color:'var(--text3)' }}>·</span>
-                      {ev.profiles?.full_name}
-                      {ev.grades?.name && (
-                        <><span style={{ color:'var(--text3)' }}>·</span>{ev.grades.name}</>
-                      )}
                     </div>
-                    {ev.description && <div style={styles.desc}>{ev.description}</div>}
+                    <div style={styles.evMeta}>
+                      <span><i className="ti ti-clock" style={{ fontSize: 12 }} /> {new Date(ev.starts_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}–{new Date(ev.ends_at).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}</span>
+                      <span><i className="ti ti-book" style={{ fontSize: 12 }} /> {ev.subjects?.name}</span>
+                      <span><i className="ti ti-user" style={{ fontSize: 12 }} /> {ev.profiles?.full_name}</span>
+                      {ev.grades?.name && <span><i className="ti ti-school" style={{ fontSize: 12 }} /> {ev.grades.name}</span>}
+                    </div>
+                    {ev.description && <p style={styles.desc}>{ev.description}</p>}
                   </div>
-                  <div style={styles.days}>{daysUntil(ev.date)}</div>
                 </div>
               </div>
             )
@@ -141,31 +134,37 @@ export default function UpcomingPage() {
 }
 
 const styles = {
-  pills: { display:'flex', gap:6, flexWrap:'wrap', marginBottom:16 },
+  header: { marginBottom: 20 },
+  pageTitle: { fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 4 },
+  subtitle: { fontSize: 13, color: 'var(--text3)' },
+  pills: { display:'flex', gap: 6, flexWrap:'wrap', marginBottom: 20 },
   pill: {
-    padding:'5px 12px', borderRadius:20,
-    border:'1px solid var(--border)', fontSize:12,
-    fontWeight:500, cursor:'pointer',
-    transition:'all 0.12s',
+    display: 'inline-flex', alignItems: 'center', gap: 5,
+    padding:'6px 14px', borderRadius: 20,
+    border:'1.5px solid var(--border)', fontSize: 12,
+    fontWeight: 500, cursor:'pointer', background: 'var(--bg2)', color: 'var(--text2)',
+    transition:'all 0.15s',
   },
+  pillActive: { background: 'var(--blue-light)', color: 'var(--blue)', borderColor: 'var(--blue)' },
   dateLabel: {
-    fontSize:11, fontWeight:600, color:'var(--text3)',
-    textTransform:'uppercase', letterSpacing:'0.05em',
-    marginTop:16, marginBottom:6,
-    display:'flex', alignItems:'center', gap:8,
+    display:'flex', alignItems:'center', gap: 10,
+    fontSize: 13, fontWeight: 600, color:'var(--text)',
+    marginTop: 20, marginBottom: 8, paddingLeft: 4,
   },
+  daysLabel: { fontSize: 11, color: 'var(--text3)', fontWeight: 500 },
   conflictTag: {
+    display: 'inline-flex', alignItems: 'center', gap: 4,
     background:'var(--amber-light)', color:'var(--amber-text)',
-    fontSize:10, padding:'1px 7px', borderRadius:10, fontWeight:600,
+    fontSize: 11, padding:'2px 8px', borderRadius: 10, fontWeight: 600,
   },
-  card: {
-    display:'flex', alignItems:'flex-start', gap:12,
-    border:'1px solid var(--border)', borderRadius:8,
-    padding:'10px 14px', marginBottom:5,
+  eventCard: {
+    padding: '14px 18px',
+    borderLeft: '4px solid',
+    borderRadius: 12,
+    marginBottom: 0,
   },
-  dot: { width:8, height:8, borderRadius:'50%', background:'var(--text3)', marginTop:5, flexShrink:0 },
-  evTitle: { fontSize:13, fontWeight:500, marginBottom:4 },
-  evMeta: { display:'flex', alignItems:'center', gap:6, fontSize:11, color:'var(--text2)', flexWrap:'wrap' },
-  desc: { fontSize:11, color:'var(--text2)', marginTop:5 },
-  days: { fontSize:11, color:'var(--text3)', whiteSpace:'nowrap', minWidth:70, textAlign:'right', marginTop:2 },
+  evHeader: { display:'flex', alignItems:'center', gap: 10, marginBottom: 6 },
+  evTitle: { fontSize: 14, fontWeight: 600 },
+  evMeta: { display:'flex', alignItems:'center', gap: 14, fontSize: 12, color:'var(--text2)', flexWrap:'wrap' },
+  desc: { fontSize: 12, color:'var(--text2)', marginTop: 8, lineHeight: 1.5 },
 }
